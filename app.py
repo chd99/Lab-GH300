@@ -7,7 +7,9 @@ import streamlit as st
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 DATA_FILE = DATA_DIR / "exercise_log.csv"
+DEFAULT_USER = "default"
 DEFAULT_COLUMNS = [
+    "user",
     "date",
     "sport",
     "duration_minutes",
@@ -31,7 +33,10 @@ def load_records() -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame(columns=DEFAULT_COLUMNS)
 
+    if "user" not in df.columns:
+        df["user"] = DEFAULT_USER
     df = df[DEFAULT_COLUMNS].copy()
+    df["user"] = df["user"].fillna(DEFAULT_USER)
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     df["duration_minutes"] = pd.to_numeric(df["duration_minutes"], errors="coerce").fillna(0).astype(int)
     df["calories"] = pd.to_numeric(df["calories"], errors="coerce").fillna(0).astype(int)
@@ -47,6 +52,7 @@ def save_records(df: pd.DataFrame) -> None:
     if record_df.empty:
         record_df = pd.DataFrame(columns=DEFAULT_COLUMNS)
     else:
+        record_df["user"] = record_df["user"].fillna(DEFAULT_USER)
         record_df["date"] = pd.to_datetime(record_df["date"], errors="coerce")
         record_df["duration_minutes"] = pd.to_numeric(record_df["duration_minutes"], errors="coerce").fillna(0).astype(int)
         record_df["calories"] = pd.to_numeric(record_df["calories"], errors="coerce").fillna(0).astype(int)
@@ -86,6 +92,13 @@ def main() -> None:
     records = load_records()
 
     with st.sidebar:
+        st.header("User")
+        existing_users = sorted(records["user"].unique()) or [DEFAULT_USER]
+        selected_user = st.selectbox("Select user", existing_users)
+        new_user = st.text_input("Or add a new user").strip()
+        active_user = new_user or selected_user
+        st.caption(f"Active user: {active_user}")
+
         st.header("Add a workout")
         with st.form("exercise_form", clear_on_submit=True):
             workout_date = st.date_input("Date", value=pd.Timestamp.today().date())
@@ -101,6 +114,7 @@ def main() -> None:
             if st.form_submit_button("Save workout"):
                 new_record = pd.DataFrame(
                     [{
+                        "user": active_user,
                         "date": workout_date,
                         "sport": workout_type,
                         "duration_minutes": int(duration),
@@ -113,6 +127,8 @@ def main() -> None:
                 save_records(updated_records)
                 st.success("Workout saved successfully.")
                 st.rerun()
+
+    records = records[records["user"] == active_user]
 
     if records.empty:
         st.info("No exercise data yet. Add your first workout from the sidebar to get started.")
