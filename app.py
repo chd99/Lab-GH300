@@ -55,6 +55,7 @@ def save_records(df: pd.DataFrame) -> None:
         record_df["notes"] = record_df["notes"].fillna("")
     record_df = record_df[DEFAULT_COLUMNS]
     record_df.to_csv(DATA_FILE, index=False)
+    load_records.clear()
 
 
 def get_dashboard_summary(df: pd.DataFrame) -> dict:
